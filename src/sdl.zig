@@ -75,12 +75,7 @@ fn sdlAppIterateC(_: ?*anyopaque) callconv(.c) c.SDL_AppResult {
 
 fn sdlAppEventC(_: ?*anyopaque, sdl_event: ?*c.SDL_Event) callconv(.c) c.SDL_AppResult {
     const event = Event.from(sdl_event.?.*);
-    switch (event) {
-        Event.quit => {
-            return c.SDL_APP_SUCCESS;
-        },
-        else => return c.SDL_APP_CONTINUE,
-    }
+    return app.event(event).toSdl();
 }
 
 fn sdlAppQuitC(_: ?*anyopaque, result: c.SDL_AppResult) callconv(.c) void {
