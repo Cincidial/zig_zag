@@ -2,7 +2,10 @@ const std = @import("std");
 const sdl = @import("sdl.zig");
 
 const App = struct {
-    pub fn init(_: *const App) sdl.Result {
+    pub fn init(_: *const App) !sdl.Result {
+        sdl.logVersion();
+        try sdl.createWindow("Zig Zag", "0.0.1", "zig_zag", 640, 480);
+
         return .persist;
     }
 
@@ -24,17 +27,17 @@ const app: App = .{};
 pub fn main() !u8 {
     return sdl.start(.{
         .init = struct {
-            fn init() sdl.Result {
+            fn init() anyerror!sdl.Result {
                 return app.init();
             }
         }.init,
         .iterate = struct {
-            fn iterate() sdl.Result {
+            fn iterate() anyerror!sdl.Result {
                 return app.iterate();
             }
         }.iterate,
         .event = struct {
-            fn event(e: sdl.Event) sdl.Result {
+            fn event(e: sdl.Event) anyerror!sdl.Result {
                 return app.event(e);
             }
         }.event,
