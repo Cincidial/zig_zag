@@ -2,27 +2,34 @@ const std = @import("std");
 const sdl = @import("sdl.zig");
 
 const App = struct {
-    pub fn init(_: *const App) !sdl.Result {
+    cleanup_on_quit: bool = false,
+    rendering_window: sdl.RenderingWindow = undefined,
+
+    pub fn init(self: *App) !sdl.Result {
         sdl.logVersion();
-        try sdl.createWindow("Zig Zag", "0.0.1", "zig_zag", 640, 480);
+        self.rendering_window = try sdl.createWindow("Zig Zag", "0.0.1", "zig_zag", 640, 480);
 
         return .persist;
     }
 
-    pub fn iterate(_: *const App) sdl.Result {
+    pub fn iterate(_: *App) sdl.Result {
         return .persist;
     }
 
-    pub fn event(_: *const App, e: sdl.Event) sdl.Result {
+    pub fn event(_: *App, e: sdl.Event) sdl.Result {
         return switch (e) {
             .quit => .success,
             else => .persist,
         };
     }
 
-    pub fn quit(_: *const App, _: sdl.Result) void {}
+    pub fn quit(self: *App, _: sdl.Result) void {
+        if (self.cleanup_on_quit) {
+            self.rendering_window.destroy();
+        }
+    }
 };
-const app: App = .{};
+var app: App = .{};
 
 pub fn main() !u8 {
     return sdl.start(.{

@@ -8,18 +8,30 @@ const c = @cImport({
 });
 
 const log = std.log.scoped(.sdl);
-/////////////////////////////////////////////
-// SDL State
-/////////////////////////////////////////////
-
-var app: SdlAppCallbacks = undefined;
-var window_created = false;
-var window: *c.SDL_Window = undefined;
-var renderer: *c.SDL_Renderer = undefined;
 
 /////////////////////////////////////////////
 // Wrapper
 /////////////////////////////////////////////
+
+inline fn sdlErr(value: anytype) error{SdlError}!switch (@typeInfo(@TypeOf(value))) {
+    .bool => void,
+    .pointer, .optional => @TypeOf(value.?),
+    .int => |info| switch (info.signedness) {
+        .signed => @TypeOf(@max(0, value)),
+        .unsigned => @TypeOf(value),
+    },
+    else => @compileError("Cannot check this return type for error: " ++ @typeName(@TypeOf(value))),
+} {
+    return switch (@typeInfo(@TypeOf(value))) {
+        .bool => if (!value) error.SdlError,
+        .pointer, .optional => value orelse error.SdlError,
+        .int => |info| switch (info.signedness) {
+            .signed => if (value >= 0) @max(0, value) else error.SdlError,
+            .unsigned => if (value != 0) value else error.SdlError,
+        },
+        else => comptime unreachable,
+    };
+}
 
 pub const Result = enum {
     success,
@@ -66,25 +78,22 @@ pub const Event = union(enum) {
     }
 };
 
-inline fn sdlErr(value: anytype) error{SdlError}!switch (@typeInfo(@TypeOf(value))) {
-    .bool => void,
-    .pointer, .optional => @TypeOf(value.?),
-    .int => |info| switch (info.signedness) {
-        .signed => @TypeOf(@max(0, value)),
-        .unsigned => @TypeOf(value),
-    },
-    else => @compileError("Cannot check this return type for error: " ++ @typeName(@TypeOf(value))),
-} {
-    return switch (@typeInfo(@TypeOf(value))) {
-        .bool => if (!value) error.SdlError,
-        .pointer, .optional => value orelse error.SdlError,
-        .int => |info| switch (info.signedness) {
-            .signed => if (value >= 0) @max(0, value) else error.SdlError,
-            .unsigned => if (value != 0) value else error.SdlError,
-        },
-        else => comptime unreachable,
-    };
-}
+pub const RenderingWindow = struct {
+    window: ?*c.SDL_Window = null,
+    renderer: ?*c.SDL_Renderer = null,
+
+    pub fn destroy(self: *RenderingWindow) void {
+        if (self.window) |w| {
+            c.SDL_DestroyWindow(w);
+        }
+
+        if (self.renderer) |r| {
+            c.SDL_DestroyRenderer(r);
+        }
+    }
+};
+
+pub const Renderer = struct {};
 
 pub fn logVersion() void {
     log.debug("SDL buildtime version: {d}.{d}.{d}", .{
@@ -104,18 +113,20 @@ pub fn logVersion() void {
     log.debug("SDL runtime revision: {s}", .{revision});
 }
 
-pub fn createWindow(comptime display_name: []const u8, comptime app_version: []const u8, id: []const u8, width: u16, height: u16) !void {
+pub fn createWindow(comptime display_name: []const u8, comptime app_version: []const u8, id: []const u8, width: u16, height: u16) !RenderingWindow {
     try sdlErr(c.SDL_SetAppMetadata(@ptrCast(display_name), @ptrCast(app_version), @ptrCast(id)));
     try sdlErr(c.SDL_Init(c.SDL_INIT_VIDEO | c.SDL_INIT_AUDIO | c.SDL_INIT_GAMEPAD));
     sdlErr(c.SDL_SetHint(c.SDL_HINT_RENDER_VSYNC, "1")) catch {};
 
-    try sdlErr(c.SDL_CreateWindowAndRenderer("Zig Zag", width, height, 0, @ptrCast(&window), @ptrCast(&renderer)));
-    errdefer c.SDL_DestroyWindow(window);
-    errdefer c.SDL_DestroyRenderer(renderer);
+    var rendering_window: RenderingWindow = .{};
+    try sdlErr(c.SDL_CreateWindowAndRenderer("Zig Zag", width, height, 0, @ptrCast(&rendering_window.window), @ptrCast(&rendering_window.renderer)));
+    errdefer rendering_window.destroy();
 
     log.debug("SDL video driver: {s}", .{c.SDL_GetCurrentVideoDriver().?});
     log.debug("SDL audio driver: {s}", .{c.SDL_GetCurrentAudioDriver().?});
-    log.debug("SDL renderer: {s}", .{c.SDL_GetRendererName(renderer).?});
+    log.debug("SDL renderer: {s}", .{c.SDL_GetRendererName(rendering_window.renderer).?});
+
+    return rendering_window;
 }
 
 /////////////////////////////////////////////
@@ -129,6 +140,7 @@ pub const SdlAppCallbacks = struct {
     quit: *const fn (Result) void,
 };
 
+var app: SdlAppCallbacks = undefined;
 pub fn start(a: SdlAppCallbacks) u8 {
     app = a;
 
@@ -158,11 +170,5 @@ fn sdlAppEventC(_: ?*anyopaque, sdl_event: ?*c.SDL_Event) callconv(.c) c.SDL_App
 
 fn sdlAppQuitC(_: ?*anyopaque, result: c.SDL_AppResult) callconv(.c) void {
     app.quit(Result.from(result));
-
-    if (window_created) {
-        c.SDL_DestroyRenderer(renderer);
-        c.SDL_DestroyWindow(window);
-        window_created = false;
-    }
     c.SDL_Quit();
 }
