@@ -2,7 +2,6 @@ const std = @import("std");
 const sdl = @import("sdl.zig");
 
 const App = struct {
-    cleanup_on_quit: bool = false,
     rendering_window: sdl.RenderingWindow = undefined,
 
     pub fn init(self: *App) !sdl.Result {
@@ -24,9 +23,7 @@ const App = struct {
     }
 
     pub fn quit(self: *App, _: sdl.Result) void {
-        if (self.cleanup_on_quit) {
-            self.rendering_window.destroy();
-        }
+        self.rendering_window.destroy();
     }
 };
 var app: App = .{};

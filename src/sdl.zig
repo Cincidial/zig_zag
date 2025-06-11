@@ -85,10 +85,12 @@ pub const RenderingWindow = struct {
     pub fn destroy(self: *RenderingWindow) void {
         if (self.window) |w| {
             c.SDL_DestroyWindow(w);
+            self.window = null;
         }
 
         if (self.renderer) |r| {
             c.SDL_DestroyRenderer(r);
+            self.renderer = null;
         }
     }
 };
