@@ -78,9 +78,49 @@ pub const Event = union(enum) {
     }
 };
 
+pub const Color = struct {
+    pub const OPAQUE = 255;
+    pub const TRASPARENT = 0;
+
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+
+    pub inline fn init(r: u8, g: u8, b: u8, a: u8) Color {
+        return .{ .r = r, .g = g, .b = b, .a = a };
+    }
+
+    pub inline fn use(self: *const Color, renderer: ?*c.SDL_Renderer) !void {
+        try sdlErr(c.SDL_SetRenderDrawColor(renderer, self.r, self.g, self.b, self.a));
+    }
+};
+
+pub const FRect = struct {
+    sdl_frect: c.SDL_FRect = undefined,
+
+    pub inline fn init(x: f32, y: f32, w: f32, h: f32) FRect {
+        return .{ .sdl_frect = c.SDL_FRect{ .x = x, .y = y, .w = w, .h = h } };
+    }
+};
+
 pub const RenderingWindow = struct {
     window: ?*c.SDL_Window = null,
     renderer: ?*c.SDL_Renderer = null,
+
+    pub fn clear(self: *RenderingWindow, color: Color) !void {
+        try color.use(self.renderer);
+        try sdlErr(c.SDL_RenderClear(self.renderer));
+    }
+
+    pub fn fillRect(self: *RenderingWindow, frect: *const FRect, color: Color) !void {
+        try color.use(self.renderer);
+        return try sdlErr(c.SDL_RenderFillRect(self.renderer, &frect.sdl_frect));
+    }
+
+    pub inline fn present(self: *RenderingWindow) !void {
+        try sdlErr(c.SDL_RenderPresent(self.renderer));
+    }
 
     pub fn destroy(self: *RenderingWindow) void {
         if (self.window) |w| {
@@ -94,8 +134,6 @@ pub const RenderingWindow = struct {
         }
     }
 };
-
-pub const Renderer = struct {};
 
 pub fn logVersion() void {
     log.debug("SDL buildtime version: {d}.{d}.{d}", .{

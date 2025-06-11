@@ -11,7 +11,10 @@ const App = struct {
         return .persist;
     }
 
-    pub fn iterate(_: *App) sdl.Result {
+    pub fn iterate(self: *App) !sdl.Result {
+        try self.rendering_window.clear(sdl.Color.init(1, 100, 1, sdl.Color.OPAQUE));
+        try self.rendering_window.fillRect(&sdl.FRect.init(0, 0, 100, 100), sdl.Color.init(50, 50, 50, sdl.Color.OPAQUE));
+        try self.rendering_window.present();
         return .persist;
     }
 
@@ -24,6 +27,7 @@ const App = struct {
 
     pub fn quit(self: *App, _: sdl.Result) void {
         self.rendering_window.destroy();
+        self.rendering_window = undefined;
     }
 };
 var app: App = .{};
