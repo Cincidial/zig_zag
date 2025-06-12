@@ -1,5 +1,6 @@
 const std = @import("std");
 const sdl = @import("sdl.zig");
+const player = @import("player.zig");
 
 const App = struct {
     rendering_window: sdl.RenderingWindow = undefined,
@@ -12,15 +13,32 @@ const App = struct {
     }
 
     pub fn iterate(self: *App) !sdl.Result {
+        // Update
+        player.update();
+
+        // Draw
         try self.rendering_window.clear(sdl.Color.init(1, 100, 1, sdl.Color.OPAQUE));
-        try self.rendering_window.fillRect(&sdl.FRect.init(0, 0, 100, 100), sdl.Color.init(50, 50, 50, sdl.Color.OPAQUE));
+        try player.draw(&self.rendering_window);
         try self.rendering_window.present();
+
         return .persist;
     }
 
     pub fn event(_: *App, e: sdl.Event) sdl.Result {
+        if (e == .quit) {
+            return .success;
+        }
+
+        player.event(e);
         return switch (e) {
-            .quit => .success,
+            .key_down => {
+                if (e.key_down.scan_code == sdl.ScanCode.ESCAPE) {
+                    sdl.quit();
+                    return .success;
+                }
+
+                return .persist;
+            },
             else => .persist,
         };
     }
