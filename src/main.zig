@@ -2,13 +2,17 @@ const std = @import("std");
 const sdl = @import("sdl.zig");
 const player = @import("player.zig");
 
+const init_window_size_width = 640;
+const init_window_size_height = 480;
+
 const App = struct {
     rendering_window: sdl.RenderingWindow = undefined,
 
     pub fn init(self: *App) !sdl.Result {
         sdl.logVersion();
-        self.rendering_window = try sdl.createWindow("Zig Zag", "0.0.1", "zig_zag", 640, 480);
+        self.rendering_window = try sdl.createWindow("Zig Zag", "0.0.1", "zig_zag", init_window_size_width, init_window_size_height);
 
+        player.event(.{ .window_resized = .{ .width = init_window_size_width, .height = init_window_size_height } });
         return .persist;
     }
 

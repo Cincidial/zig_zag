@@ -1,4 +1,5 @@
 const std = @import("std");
+const Vec2 = @import("math.zig").Vec2;
 const c = @cImport({
     @cDefine("SDL_DISABLE_OLD_NAMES", {});
     @cInclude("SDL3/SDL.h");
@@ -314,9 +315,9 @@ pub const ScanCode = enum(c.SDL_Scancode) {
     ENDCALL = c.SDL_SCANCODE_ENDCALL,
     RESERVED = c.SDL_SCANCODE_RESERVED,
     COUNT = c.SDL_SCANCODE_COUNT,
+    _,
 };
 
-// TODO: Keymod is broken for enumFromInt
 pub const KeyMod = enum(c.SDL_Keymod) {
     NONE = c.SDL_KMOD_NONE,
     LSHIFT = c.SDL_KMOD_LSHIFT,
@@ -336,6 +337,7 @@ pub const KeyMod = enum(c.SDL_Keymod) {
     SHIFT = c.SDL_KMOD_SHIFT,
     ALT = c.SDL_KMOD_ALT,
     GUI = c.SDL_KMOD_GUI,
+    _,
 };
 
 pub const KeyDownEvent = struct {
@@ -349,12 +351,22 @@ pub const KeyUpEvent = struct {
     mod: KeyMod,
 };
 
+pub const WindowResizedEvent = struct {
+    width: c.Sint32,
+    height: c.Sint32,
+
+    pub inline fn asVec2(self: WindowResizedEvent) Vec2 {
+        return .{ .x = @floatFromInt(self.width), .y = @floatFromInt(self.height) };
+    }
+};
+
 pub const Event = union(enum) {
     pub const QuitEvent = c.SDL_QuitEvent;
 
     quit: QuitEvent,
     key_down: KeyDownEvent,
     key_up: KeyUpEvent,
+    window_resized: WindowResizedEvent,
     unsupported: u32,
 
     fn from(raw: c.SDL_Event) Event {
@@ -362,6 +374,7 @@ pub const Event = union(enum) {
             c.SDL_EVENT_QUIT => .{ .quit = raw.quit },
             c.SDL_EVENT_KEY_DOWN => .{ .key_down = .{ .scan_code = @enumFromInt(raw.key.scancode), .mod = @enumFromInt(raw.key.mod), .repeat = raw.key.repeat } },
             c.SDL_EVENT_KEY_UP => .{ .key_up = .{ .scan_code = @enumFromInt(raw.key.scancode), .mod = @enumFromInt(raw.key.mod) } },
+            c.SDL_EVENT_WINDOW_RESIZED => .{ .window_resized = .{ .width = raw.window.data1, .height = raw.window.data2 } },
             else => Event{ .unsupported = raw.type },
         };
     }
