@@ -1,22 +1,31 @@
 const std = @import("std");
 const sdl = @import("sdl.zig");
+const globals = @import("globals.zig");
 const Vec2 = @import("math.zig").Vec2;
+const Rect = @import("math.zig").Rect;
 
 pub const Rock = struct {
     position: Vec2 = Vec2.ZERO,
     size: Vec2 = Vec2.ZERO,
+    speed: Vec2 = Vec2.ZERO,
 
     pub fn alloc(allocater: std.mem.Allocator) !*Rock {
         const pointer = try allocater.create(Rock);
+        pointer.position = .{ .x = 250, .y = 250 };
         pointer.size = .{ .x = 50, .y = 50 };
+        pointer.speed = .{ .x = 0, .y = 5 };
 
         return pointer;
     }
 
     pub fn update(self: *Rock) bool {
-        self.position = self.position.addY(5);
+        const outside = !globals.current_screen.areRectsOverlapping(Rect.from_vec2(self.position, self.size));
+        if (outside) {
+            self.speed = self.speed.newY(-self.speed.y);
+        }
 
-        return false; // TODO: Return true when cleanup required and do cleanup in here before hand
+        self.position = self.position.addY(self.speed.y);
+        return outside;
     }
 
     pub fn draw(self: *Rock, rendering_window: *sdl.RenderingWindow) !void {

@@ -1,4 +1,5 @@
 const sdl = @import("sdl.zig");
+const globals = @import("globals.zig");
 const Vec2 = @import("math.zig").Vec2;
 const Rect = @import("math.zig").Rect;
 
@@ -7,22 +8,20 @@ var size: Vec2 = .{ .x = 100, .y = 100 };
 var position: Vec2 = Vec2.ZERO;
 var speed: Vec2 = Vec2.ZERO;
 
-var screen_size: Vec2 = Vec2.ZERO;
-
 pub fn update() void {
     position = position.add(speed);
     const pos_rect = Rect.from_vec2(position, size);
 
-    if (pos_rect.left() < 0) {
-        position = position.newX(0);
-    } else if (pos_rect.right() > screen_size.x) {
-        position = position.newX(screen_size.x - size.x);
+    if (pos_rect.left() < globals.current_screen.left()) {
+        position = position.newX(globals.current_screen.left());
+    } else if (pos_rect.right() > globals.current_screen.right()) {
+        position = position.newX(globals.current_screen.right() - size.x);
     }
 
-    if (pos_rect.top() < 0) {
-        position = position.newY(0);
-    } else if (pos_rect.bottom() > screen_size.y) {
-        position = position.newY(screen_size.y - size.y);
+    if (pos_rect.top() < globals.current_screen.top()) {
+        position = position.newY(globals.current_screen.top());
+    } else if (pos_rect.bottom() > globals.current_screen.bottom()) {
+        position = position.newY(globals.current_screen.bottom() - size.y);
     }
 }
 
@@ -32,7 +31,6 @@ pub fn draw(rendering_window: *sdl.RenderingWindow) !void {
 
 pub fn event(e: sdl.Event) void {
     switch (e) {
-        .window_resized => screen_size = e.window_resized.asVec2(),
         .key_down => {
             if (e.key_down.repeat) return;
 

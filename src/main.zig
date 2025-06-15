@@ -1,52 +1,85 @@
 const std = @import("std");
 const sdl = @import("sdl.zig");
+const globals = @import("globals.zig");
+const math = @import("math.zig");
 const player = @import("player.zig");
 const Rock = @import("rock.zig").Rock;
 
 const init_window_size_width = 640;
 const init_window_size_height = 480;
+var default_rng: std.Random.Xoshiro256 = undefined;
 
-const Entities = union(enum) {
+const Entity = union(enum) {
     rock: *Rock,
+};
+
+const EntityEntry = struct {
+    entity: Entity,
+    is_valid: bool = true,
 };
 
 const App = struct {
     allocater: std.mem.Allocator = undefined,
+    rng: std.Random = undefined,
     rendering_window: sdl.RenderingWindow = undefined,
-    entities: std.ArrayList(Entities) = undefined,
+    entities: std.ArrayList(EntityEntry) = undefined,
 
     pub fn init(self: *App) !sdl.Result {
         sdl.logVersion();
         self.rendering_window = try sdl.createWindow("Zig Zag", "0.0.1", "zig_zag", init_window_size_width, init_window_size_height);
         errdefer self.cleanupWindow();
 
-        self.entities = std.ArrayList(Entities).init(self.allocater);
+        _ = try self.event(.{ .window_resized = .{ .width = init_window_size_width, .height = init_window_size_height } });
+
+        self.entities = std.ArrayList(EntityEntry).init(self.allocater);
         errdefer self.cleanupEntities();
 
-        try self.entities.append(.{ .rock = try Rock.alloc(self.allocater) });
-
-        player.event(.{ .window_resized = .{ .width = init_window_size_width, .height = init_window_size_height } });
+        try self.entities.append(.{ .entity = .{ .rock = try Rock.alloc(self.allocater) } });
         return .persist;
     }
 
     pub fn iterate(self: *App) !sdl.Result {
-        // Update
+        try self.rendering_window.clear(sdl.Color.init(1, 100, 1, sdl.Color.OPAQUE));
         player.update();
 
-        try self.rendering_window.clear(sdl.Color.init(1, 100, 1, sdl.Color.OPAQUE));
-        for (self.entities.items) |value| {
-            _ = value.rock.update(); // TODO: Handle cleanup when this is false
-            try value.rock.draw(&self.rendering_window);
+        if (self.rng.uintAtMost(u8, std.math.maxInt(u8)) > std.math.maxInt(u8) - 10) {
+            var rock = try Rock.alloc(self.allocater);
+            rock.position = .{ .x = self.rng.float(f32) * globals.current_screen.right(), .y = 0 };
+
+            try self.entities.append(.{ .entity = .{ .rock = rock } });
         }
 
-        // Draw
+        var invalid_count: u16 = 0;
+        for (self.entities.items) |*value| {
+            if (!value.is_valid) {
+                invalid_count += 1;
+                continue;
+            }
+
+            if (value.entity.rock.update()) {
+                self.allocater.destroy(value.entity.rock);
+                value.is_valid = false;
+            } else {
+                try value.entity.rock.draw(&self.rendering_window);
+            }
+        }
+        if (invalid_count > self.entities.items.len / 2) {
+            var new_entities = try std.ArrayList(EntityEntry).initCapacity(self.allocater, self.entities.items.len - invalid_count);
+            for (self.entities.items) |value| {
+                if (value.is_valid) {
+                    try new_entities.append(value);
+                }
+            }
+            self.entities.clearAndFree();
+            self.entities = new_entities;
+        }
+
         try player.draw(&self.rendering_window);
         try self.rendering_window.present();
-
         return .persist;
     }
 
-    pub fn event(_: *App, e: sdl.Event) sdl.Result {
+    pub fn event(self: *App, e: sdl.Event) !sdl.Result {
         if (e == .quit) {
             return .success;
         }
@@ -54,11 +87,27 @@ const App = struct {
         player.event(e);
         return switch (e) {
             .key_down => {
-                if (e.key_down.scan_code == sdl.ScanCode.ESCAPE) {
-                    sdl.quit();
-                    return .success;
-                }
+                return switch (e.key_down.scan_code) {
+                    .ESCAPE => {
+                        sdl.quit();
+                        return .success;
+                    },
+                    .N => {
+                        var rock = try Rock.alloc(self.allocater);
+                        rock.position = .{ .x = 5, .y = 100 };
 
+                        try self.entities.append(.{ .entity = .{ .rock = rock } });
+                        return .persist;
+                    },
+                    .P => {
+                        std.debug.print("Count: {d}", .{self.entities.items.len});
+                        return .persist;
+                    },
+                    else => .persist,
+                };
+            },
+            .window_resized => {
+                globals.current_screen = math.Rect.from_vec2(math.Vec2.ZERO, e.window_resized.asVec2());
                 return .persist;
             },
             else => .persist,
@@ -77,7 +126,9 @@ const App = struct {
 
     fn cleanupEntities(self: *App) void {
         for (self.entities.items) |value| {
-            self.allocater.destroy(value.rock);
+            if (value.is_valid) {
+                self.allocater.destroy(value.entity.rock);
+            }
         }
         self.entities.deinit();
     }
@@ -85,7 +136,10 @@ const App = struct {
 var app: App = .{};
 
 pub fn main() !u8 {
+    default_rng = std.Random.DefaultPrng.init(std.crypto.random.int(u64));
+
     app.allocater = std.heap.page_allocator;
+    app.rng = default_rng.random();
 
     return sdl.start(.{
         .init = struct {

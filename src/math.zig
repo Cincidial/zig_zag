@@ -70,6 +70,14 @@ pub const Rect = struct {
         return self.bl.y;
     }
 
+    pub fn isPointWithin(self: Rect, point: Vec2) bool {
+        return point.x >= self.left() and point.y <= self.right() and point.y >= self.top() and point.y <= self.bottom();
+    }
+
+    pub fn areRectsOverlapping(r1: Rect, r2: Rect) bool {
+        return r1.isPointWithin(r2.tl) or r1.isPointWithin(r2.bl) or r1.isPointWithin(r2.br) or r1.isPointWithin(r2.tr) or r2.isPointWithin(r1.tl) or r2.isPointWithin(r1.bl) or r2.isPointWithin(r1.br) or r2.isPointWithin(r1.tr);
+    }
+
     pub fn print(self: Rect) void {
         std.debug.print("tl: ({d}, {d}), bl: ({d}, {d}), br: ({d}, {d}), tr: ({d}, {d})\n", .{ self.tl.x, self.tl.y, self.bl.x, self.bl.y, self.br.x, self.br.y, self.tr.x, self.tr.y });
     }
