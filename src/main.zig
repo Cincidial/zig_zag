@@ -6,7 +6,7 @@ const player = @import("player.zig");
 const Rock = @import("rock.zig").Rock;
 
 const init_window_size_width = 640;
-const init_window_size_height = 480;
+const init_window_size_height = 640;
 var default_rng: std.Random.Xoshiro256 = undefined;
 
 const App = struct {

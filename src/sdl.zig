@@ -340,6 +340,13 @@ pub const KeyMod = enum(c.SDL_Keymod) {
     _,
 };
 
+pub const MouseButton = enum(c.SDL_MouseButtonFlags) {
+    LEFT = c.SDL_BUTTON_LEFT,
+    MIDDLE = c.SDL_BUTTON_MIDDLE,
+    RIGHT = c.SDL_BUTTON_RIGHT,
+    _,
+};
+
 pub const KeyDownEvent = struct {
     scan_code: ScanCode,
     mod: KeyMod,
@@ -349,6 +356,18 @@ pub const KeyDownEvent = struct {
 pub const KeyUpEvent = struct {
     scan_code: ScanCode,
     mod: KeyMod,
+};
+
+pub const MouseDownEvent = struct {
+    button: MouseButton,
+    x: f32,
+    y: f32,
+};
+
+pub const MouseUpEvent = struct {
+    button: MouseButton,
+    x: f32,
+    y: f32,
 };
 
 pub const WindowResizedEvent = struct {
@@ -366,6 +385,8 @@ pub const Event = union(enum) {
     quit: QuitEvent,
     key_down: KeyDownEvent,
     key_up: KeyUpEvent,
+    mouse_down: MouseDownEvent,
+    mouse_up: MouseUpEvent,
     window_resized: WindowResizedEvent,
     unsupported: u32,
 
@@ -374,6 +395,8 @@ pub const Event = union(enum) {
             c.SDL_EVENT_QUIT => .{ .quit = raw.quit },
             c.SDL_EVENT_KEY_DOWN => .{ .key_down = .{ .scan_code = @enumFromInt(raw.key.scancode), .mod = @enumFromInt(raw.key.mod), .repeat = raw.key.repeat } },
             c.SDL_EVENT_KEY_UP => .{ .key_up = .{ .scan_code = @enumFromInt(raw.key.scancode), .mod = @enumFromInt(raw.key.mod) } },
+            c.SDL_EVENT_MOUSE_BUTTON_DOWN => .{ .mouse_down = .{ .button = @enumFromInt(raw.button.button), .x = raw.button.x, .y = raw.button.y } },
+            c.SDL_EVENT_MOUSE_BUTTON_UP => .{ .mouse_up = .{ .button = @enumFromInt(raw.button.button), .x = raw.button.x, .y = raw.button.y } },
             c.SDL_EVENT_WINDOW_RESIZED => .{ .window_resized = .{ .width = raw.window.data1, .height = raw.window.data2 } },
             else => Event{ .unsupported = raw.type },
         };
@@ -461,7 +484,7 @@ pub fn createWindow(comptime display_name: []const u8, comptime app_version: []c
     sdlErr(c.SDL_SetHint(c.SDL_HINT_RENDER_VSYNC, "1")) catch {};
 
     var rendering_window: RenderingWindow = .{};
-    try sdlErr(c.SDL_CreateWindowAndRenderer("Zig Zag", width, height, 0, @ptrCast(&rendering_window.window), @ptrCast(&rendering_window.renderer)));
+    try sdlErr(c.SDL_CreateWindowAndRenderer("Zig Zag", width, height, c.SDL_WINDOW_MOUSE_GRABBED, @ptrCast(&rendering_window.window), @ptrCast(&rendering_window.renderer)));
     errdefer rendering_window.destroy();
 
     log.debug("SDL video driver: {s}", .{c.SDL_GetCurrentVideoDriver().?});

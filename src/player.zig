@@ -51,6 +51,7 @@ pub fn event(e: sdl.Event) void {
                 else => return,
             }
         },
+        .mouse_down => |md| position = .{ .x = md.x, .y = md.y },
         else => {},
     }
 }

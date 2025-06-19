@@ -4,6 +4,9 @@ Zig Zag is a 2D scroller with rougelike and bullet-hell style concepts.
 
 - Each level is
   - Multiple enemy waves
+  - Hazards (ex. rock)
+    - Non-killable entities
+  - Treasures
   - Multi-directional
 - PC
   - Dodges
@@ -29,6 +32,7 @@ Zig Zag is a 2D scroller with rougelike and bullet-hell style concepts.
 
 1. Initial Gameplay
    1. Mouse clicks to shoot
+   1. Cursor image
    1. Menu UI
    1. Waves / levels
    1. Player stats (hp / etc)
