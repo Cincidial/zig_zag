@@ -3,6 +3,7 @@ const sdl = @import("sdl.zig");
 const globals = @import("globals.zig");
 const math = @import("math.zig");
 const player = @import("player.zig");
+const bullets = @import("bullets.zig");
 const Rock = @import("rock.zig").Rock;
 
 const init_window_size_width = 640;
@@ -10,11 +11,13 @@ const init_window_size_height = 640;
 var default_rng: std.Random.Xoshiro256 = undefined;
 
 const App = struct {
-    allocater: std.mem.Allocator = undefined,
-    rng: std.Random = undefined,
     rendering_window: sdl.RenderingWindow = undefined,
     rocks: std.ArrayList(Rock) = undefined,
 
+    // TODO: Setup bullets and hazards like below
+    // Swap remove from the end - has O(1) removal, supports removal during iteration, remove does not reduce capacity
+    // Retains array benifits of locality
+    // If things are not put on the heap, then removal has no deallocation (just reduces length). Not on heap though means uniform objects or multiple lists
     pub fn init(self: *App) !sdl.Result {
         sdl.logVersion();
         self.rendering_window = try sdl.createWindow("Zig Zag", "0.0.1", "zig_zag", init_window_size_width, init_window_size_height);
@@ -22,7 +25,7 @@ const App = struct {
 
         _ = try self.event(.{ .window_resized = .{ .width = init_window_size_width, .height = init_window_size_height } });
 
-        self.rocks = std.ArrayList(Rock).init(self.allocater);
+        self.rocks = std.ArrayList(Rock).init(globals.allocater);
         try self.rocks.appendNTimes(.{}, 200);
         errdefer self.cleanupEntities();
 
@@ -32,12 +35,14 @@ const App = struct {
     pub fn iterate(self: *App) !sdl.Result {
         try self.rendering_window.clear(sdl.Color.init(1, 100, 1, sdl.Color.OPAQUE));
         player.update();
+        bullets.update();
 
         for (self.rocks.items) |*rock| {
-            rock.update(self.rng);
+            rock.update();
             try rock.draw(&self.rendering_window);
         }
 
+        try bullets.draw(&self.rendering_window);
         try player.draw(&self.rendering_window);
         try self.rendering_window.present();
 
@@ -49,7 +54,7 @@ const App = struct {
             return .success;
         }
 
-        player.event(e);
+        try player.event(e);
         return switch (e) {
             .key_down => {
                 return switch (e.key_down.scan_code) {
@@ -86,9 +91,10 @@ var app: App = .{};
 
 pub fn main() !u8 {
     default_rng = std.Random.DefaultPrng.init(std.crypto.random.int(u64));
+    globals.allocater = std.heap.page_allocator;
+    globals.rng = default_rng.random();
 
-    app.allocater = std.heap.page_allocator;
-    app.rng = default_rng.random();
+    bullets.init();
 
     return sdl.start(.{
         .init = struct {

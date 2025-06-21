@@ -10,11 +10,11 @@ pub const Rock = struct {
     size: Vec2 = .{ .x = 50, .y = 50 },
     speed: Vec2 = .{ .x = 0, .y = 5 },
 
-    pub fn update(self: *Rock, rng: std.Random) void {
+    pub fn update(self: *Rock) void {
         if (!self.active) {
-            if (rng.uintAtMost(u16, std.math.maxInt(u16)) > std.math.maxInt(u16) - 2) {
+            if (globals.rng.uintAtMost(u16, std.math.maxInt(u16)) > std.math.maxInt(u16) - 2) {
                 self.active = true;
-                self.position = .{ .x = rng.float(f32) * (globals.current_screen.right() - self.size.x), .y = -self.size.y };
+                self.position = .{ .x = globals.rng.float(f32) * (globals.current_screen.right() - self.size.x), .y = -self.size.y };
             }
         } else {
             self.active = globals.current_screen.areRectsOverlapping(Rect.from_vec2(self.position, self.size));

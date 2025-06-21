@@ -1,6 +1,6 @@
 # Zig Zag
 
-Zig Zag is a 2D scroller with rougelike and bullet-hell style concepts.
+Zig Zag is a 2D scroller with rougelike and bullet-spray style concepts.
 
 - Each level is
   - Multiple enemy waves

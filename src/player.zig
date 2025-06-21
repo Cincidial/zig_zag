@@ -1,5 +1,6 @@
 const sdl = @import("sdl.zig");
 const globals = @import("globals.zig");
+const bullets = @import("bullets.zig");
 const Vec2 = @import("math.zig").Vec2;
 const Rect = @import("math.zig").Rect;
 
@@ -29,7 +30,7 @@ pub fn draw(rendering_window: *sdl.RenderingWindow) !void {
     try rendering_window.fillRect(&sdl.FRect.init(position.x, position.y, size.x, size.y), sdl.Color.init(50, 50, 50, sdl.Color.OPAQUE));
 }
 
-pub fn event(e: sdl.Event) void {
+pub fn event(e: sdl.Event) !void {
     switch (e) {
         .key_down => {
             if (e.key_down.repeat) return;
@@ -51,7 +52,11 @@ pub fn event(e: sdl.Event) void {
                 else => return,
             }
         },
-        .mouse_down => |md| position = .{ .x = md.x, .y = md.y },
+        .mouse_down => |md| {
+            const bullet = try bullets.addOne();
+            bullet.init();
+            bullet.position = .{ .x = md.x, .y = md.y };
+        },
         else => {},
     }
 }
